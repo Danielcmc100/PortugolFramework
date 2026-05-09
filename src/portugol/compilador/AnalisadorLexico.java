@@ -169,6 +169,7 @@ public class AnalisadorLexico {
                     lexema = "<>";
                     return Token.RELACAO;
                 case 10:
+                    posicaoFinal--;
                     lexema = "<";
                     return Token.RELACAO;
                 case 11:
@@ -181,6 +182,7 @@ public class AnalisadorLexico {
                     lexema = ">=";
                     return Token.RELACAO;
                 case 13:
+                    posicaoFinal--;
                     lexema = ">";
                     return Token.RELACAO;
                 case 14:
@@ -196,6 +198,7 @@ public class AnalisadorLexico {
                     lexema = ":=";
                     return Token.ATRIBUICAO;
                 case 18:
+                    posicaoFinal--;
                     lexema = ":";
                     return Token.DOIS_PONTOS;
                 case 19:
@@ -207,9 +210,23 @@ public class AnalisadorLexico {
                 case 21:
                     if (letraAtual == '“')
                         estado = 22;
-                    // if (Character.isAlphabetic(letraAtual)){
-                    // }
                     break;
+                case 22:
+                    offset = posicaoFinal - posicaoInicial;
+                    lexema = String.copyValueOf(vetorCodigo, posicaoInicial, offset); // inclui as aspas
+                    return Token.CADEIA_CARACTERES;
+                case 23:
+                    lexema = "+";
+                    return Token.ADICAO;
+                case 24:
+                    lexema = "-";
+                    return Token.SUBTRACAO;
+                case 25:
+                    lexema = "*";
+                    return Token.MULTIPLICACAO;
+                case 26:
+                    lexema = "/";
+                    return Token.DIVISAO;
 
             }
 
