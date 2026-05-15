@@ -114,7 +114,7 @@ public class AnalisadorLexico {
                         estado = 19;
                     else if (letraAtual == ')')
                         estado = 20;
-                    else if (letraAtual == '“')
+                    else if (letraAtual == '"')
                         estado = 21;
                     else if (letraAtual == '+')
                         estado = 23;
@@ -208,7 +208,7 @@ public class AnalisadorLexico {
                     lexema = ")";
                     return Token.FECHA_PARENTESES;
                 case 21:
-                    if (letraAtual == '“')
+                    if (letraAtual == '"')
                         estado = 22;
                     break;
                 case 22:
