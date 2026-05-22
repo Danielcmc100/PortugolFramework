@@ -135,6 +135,7 @@ public class AnalisadorSintatico {
         }
 
     }
+
     /*
      * Reconhece a produção: declaracao -> identificador : tipo_identificador
      * fim_comando
@@ -146,7 +147,6 @@ public class AnalisadorSintatico {
      * uma árvore sintática, uma vez que os dados de tipo dos identificadores
      * serão obtidos da tabela de símbolos.
      */
-
     private void reconhecerDeclaracao() {
         if (token_a_frente != null) {
             // É preciso salvar o identificador para que o seu tipo possa ser
@@ -193,7 +193,6 @@ public class AnalisadorSintatico {
      * Observar que o primeiro token é usado para determinar qual método
      * de produção será executado.
      */
-
     private NoBlocoComandos reconhecerBlocoComandos() {
         int numeroLinhaBloco = analisadorLexico.obterNumeroLinha();
         reconhecerToken(Token.INICIO);
@@ -228,6 +227,10 @@ public class AnalisadorSintatico {
             }
         }
         reconhecerToken(Token.FIM);
+        // O ';' após 'fim' é opcional nos blocos internos
+        if (token_a_frente == Token.FIM_COMANDO) {
+            reconhecerToken(Token.FIM_COMANDO);
+        }
         return listaComandosLocal;
     }
 
@@ -249,17 +252,24 @@ public class AnalisadorSintatico {
         return valorRelacao;
     }
 
-    // if ( 1 > b) entao
-    // inicio
-    // fim;
-
     private NoExpressaoRelacional reconhecerExpressaoRelacional() {
         int numeroLinhaExpressao = analisadorLexico.obterNumeroLinha();
+
+        // A condição pode vir com parênteses opcionais: (expr relacao expr) ou expr
+        // relacao expr
+        boolean temParenteses = (token_a_frente == Token.ABRE_PARENTESES);
+        if (temParenteses) {
+            reconhecerToken(Token.ABRE_PARENTESES);
+        }
 
         NoExpressao operandoEsquerdo = reconhecerExpressaoAritmetica();
         TipoRelacao valorRelacao = obterValorRelacao(analisadorLexico.obterLexema());
         reconhecerToken(Token.RELACAO);
         NoExpressao operandoDireito = reconhecerExpressaoAritmetica();
+
+        if (temParenteses) {
+            reconhecerToken(Token.FECHA_PARENTESES);
+        }
 
         return new NoExpressaoRelacional(valorRelacao, operandoEsquerdo, operandoDireito, numeroLinhaExpressao);
     }
@@ -344,10 +354,11 @@ public class AnalisadorSintatico {
     }
 
     // Médodos para completar --------------------------------------------------
-    // cmd_ler -> ler identificador ;
+
     public NoComandoLer reconhecerComandoLer() {
         int numeroLinhaTokenLer = analisadorLexico.obterNumeroLinha();
 
+        // ler identificador ;
         reconhecerToken(Token.LER);
         NoIdentificador identificador = reconhecerIdentificador();
         reconhecerToken(Token.FIM_COMANDO);
@@ -356,8 +367,9 @@ public class AnalisadorSintatico {
     }
 
     public NoComandoEscrever reconhecerComandoEscrever() {
-        int numeroLinhaToken = analisadorLexico.obterNumeroLinha();
+        int numeroLinhaComandoEscrever = analisadorLexico.obterNumeroLinha();
 
+        // escrever (expressao | cadeia_caracteres) ;
         reconhecerToken(Token.ESCREVER);
         NoExpressao operando;
         if (token_a_frente == Token.CADEIA_CARACTERES) {
@@ -367,58 +379,43 @@ public class AnalisadorSintatico {
         }
         reconhecerToken(Token.FIM_COMANDO);
 
-        return new NoComandoEscrever(operando, numeroLinhaToken);
+        return new NoComandoEscrever(operando, numeroLinhaComandoEscrever);
     }
 
     /*
      *
      */
-    // Tres possibilidades de condição
-
-    // condicao -> se (expressao) entao inicio fim;
-
-    // condicao -> se (expressao) entao inicio fim senao inicio fim;
-
-    // condicao -> se (expressao) entao
-    // inicio fim
-    // senao se (expressao) entao
-    // inicio fim;
-
     private NoComandoCondicao reconhecerComandoCondicao() {
-        int numeroLinha = analisadorLexico.obterNumeroLinha();
+        // Reconhecimento da condição e a respectiva lista de comandos a ser executada
+        int numeroLinhaComandoCondicao = analisadorLexico.obterNumeroLinha();
 
+        // se expressao_relacional entao bloco_comandos [senao (bloco_comandos | se...)]
         reconhecerToken(Token.SE);
-        reconhecerToken(Token.ABRE_PARENTESES);
         NoExpressaoRelacional expressaoRelacional = reconhecerExpressaoRelacional();
-        reconhecerToken(Token.FECHA_PARENTESES);
         reconhecerToken(Token.ENTAO);
         NoBlocoComandos blocoComandos = reconhecerBlocoComandos();
-        reconhecerToken(Token.FIM_COMANDO);
 
         NoComando comandoSenao = null;
         if (token_a_frente == Token.SENAO) {
             reconhecerToken(Token.SENAO);
+            // senao pode ser seguido de outro "se" (senao se encadeado) ou de um bloco
             if (token_a_frente == Token.SE) {
                 comandoSenao = reconhecerComandoCondicao();
             } else {
                 comandoSenao = reconhecerBlocoComandos();
-                reconhecerToken(Token.FIM_COMANDO);
             }
         }
 
-        return new NoComandoCondicao(expressaoRelacional, blocoComandos, comandoSenao, numeroLinha);
+        return new NoComandoCondicao(expressaoRelacional, blocoComandos, comandoSenao, numeroLinhaComandoCondicao);
     }
 
     private NoComandoEnquantoFaca reconhecerComandoEnquantoFaca() {
         int numeroLinhaComandoEnquantoFaca = analisadorLexico.obterNumeroLinha();
 
         reconhecerToken(Token.ENQUANTO);
-        reconhecerToken(Token.ABRE_PARENTESES);
         NoExpressaoRelacional expressaoRelacional = reconhecerExpressaoRelacional();
-        reconhecerToken(Token.FECHA_PARENTESES);
         reconhecerToken(Token.FACA);
         NoBlocoComandos blocoComandos = reconhecerBlocoComandos();
-        reconhecerToken(Token.FIM_COMANDO);
 
         return new NoComandoEnquantoFaca(expressaoRelacional, blocoComandos, numeroLinhaComandoEnquantoFaca);
     }
@@ -434,21 +431,12 @@ public class AnalisadorSintatico {
         NoNumeroInteiro limiteFinal = reconhecerNumeroInteiro();
         reconhecerToken(Token.FACA);
         NoBlocoComandos blocoComandos = reconhecerBlocoComandos();
-        reconhecerToken(Token.FIM_COMANDO);
 
         return new NoComandoDeAte(identificador, limiteInicial, limiteFinal, blocoComandos, numeroLinhaComandoDeAte);
     }
 
     private NoComandoAtribuicao reconhecerComandoAtribuicao() {
-        /*
-         * A análise sintática, a tradução e a análise semântica são executadas
-         * simultaneamente. Como o identificador será usado para compor a
-         * operação de atribuição, o mesmo deve ser mantido em uma variável local.
-         * Esse procedimento é necessário porque o método reconhecer faz com
-         * que lookahead passe a apontar para o próximo token. Procecimento
-         * semelhante é realizado com a operação retornada pelo método
-         * reconhecerExpressaoAritmetica.
-         */
+
         int numeroLinhaAtribuicao = analisadorLexico.obterNumeroLinha();
 
         NoIdentificador identificador = reconhecerIdentificador();
