@@ -6,6 +6,7 @@
 package portugol.compilador;
 
 import java.util.ArrayList;
+
 import portugol.intermediario.Instrucao;
 
 /**
@@ -19,17 +20,17 @@ public class Compilador {
     private TratadorErro tratadorErro;
     private GeradorCodigoAssembly geradorCodigoAssembly;
 
-    public Compilador(){
+    public Compilador() {
         super();
         tabelaSimbolos = new TabelaSimbolos();
         tratadorErro = new TratadorErro();
-        tradutor = new Tradutor(tabelaSimbolos,tratadorErro);
+        tradutor = new Tradutor(tabelaSimbolos, tratadorErro);
         geradorCodigoAssembly = new GeradorCodigoAssembly(tabelaSimbolos, null);
     }
 
     public void compilar(String codigo) throws Exception {
         ArrayList<Instrucao> instrucoes = tradutor.executar(codigo);
-        //String codigoAlvo = geradorCodigoAssembly.executar(instrucoes);
+        // String codigoAlvo = geradorCodigoAssembly.executar(instrucoes);
     }
 
 }
