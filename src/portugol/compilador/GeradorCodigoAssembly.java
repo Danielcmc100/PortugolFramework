@@ -7,6 +7,7 @@ package portugol.compilador;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 
 import javax.swing.DefaultListModel;
 
@@ -25,6 +26,7 @@ import portugol.intermediario.InstrucaoRelacional;
 import portugol.intermediario.InstrucaoSeFalso;
 import portugol.intermediario.Rotulo;
 import portugol.lexico.Assembly;
+import portugol.lexico.DadosIdentificador;
 
 /**
  *
@@ -87,8 +89,29 @@ public class GeradorCodigoAssembly {
         }
     }
 
-    private void criarBlocoDados() {
+    private void criarBlocoDados(ArrayList<Instrucao> instrucoes) {
+        // Declara, como DWORD, todas as variáveis do programa (tabela de símbolos)
+        // e as variáveis temporárias geradas no código intermediário.
+        LinkedHashSet<String> nomes = new LinkedHashSet<String>();
 
+        Iterator<DadosIdentificador> itSimbolos = tabelaSimbolos.obterDadosIdentificadores().iterator();
+        while (itSimbolos.hasNext()) {
+            nomes.add(itSimbolos.next().obterNome());
+        }
+
+        Iterator it = instrucoes.iterator();
+        while (it.hasNext()) {
+            Instrucao instrucao = (Instrucao) it.next();
+            if (instrucao instanceof InstrucaoAritmetica) {
+                nomes.add(((InstrucaoAritmetica) instrucao).obterOperandoRetorno().obterLexema());
+            } else if (instrucao instanceof InstrucaoRelacional) {
+                nomes.add(((InstrucaoRelacional) instrucao).obterOperandoRetorno().obterLexema());
+            }
+        }
+
+        for (String nome : nomes) {
+            imprimir(nome + " DWORD ?");
+        }
     }
 
     public void executar(ArrayList<Instrucao> instrucoes) {
@@ -105,7 +128,7 @@ public class GeradorCodigoAssembly {
         imprimir(" ");
 
         imprimir(".data");
-        criarBlocoDados();
+        criarBlocoDados(instrucoes);
         imprimir(".code");
         imprimir("start:");
         imprimir(" ");
@@ -181,9 +204,20 @@ public class GeradorCodigoAssembly {
                 operacao = "?";
         }
 
-        // Completar atui.
-        // Usar imprimir para gerar o código Assembly.
+        String esquerdo = obterValorExpressao(instrucaoAritmetica.obterOperandoEsquerdo());
+        String direito = obterValorExpressao(instrucaoAritmetica.obterOperandoDireito());
+        String retorno = obterValorExpressao(instrucaoAritmetica.obterOperandoRetorno());
 
+        imprimir(Assembly.MOV + " " + Assembly.EAX + ", " + esquerdo);
+        if (operacao.equals(Assembly.ADD) || operacao.equals(Assembly.SUB)) {
+            // add/sub operam diretamente sobre eax
+            imprimir(operacao + " " + Assembly.EAX + ", " + direito);
+        } else {
+            // mul/div usam eax como operando implícito e um registrador/memória
+            imprimir(Assembly.MOV + " ebx, " + direito);
+            imprimir(operacao + " ebx");
+        }
+        imprimir(Assembly.MOV + " " + retorno + ", " + Assembly.EAX);
     }
 
     private void escreverInstrucaoRelacional(InstrucaoRelacional instrucaoRelacional) {
@@ -218,21 +252,36 @@ public class GeradorCodigoAssembly {
         rotulo1 = gerarRotuloInterno();
         rotulo2 = gerarRotuloInterno();
 
-        // Completar atui.
-        // Usar imprimir para gerar o código Assembly.
+        String esquerdo = obterValorExpressao(instrucaoRelacional.obterOperandoEsquerdo());
+        String direito = obterValorExpressao(instrucaoRelacional.obterOperandoDireito());
+        String retorno = obterValorExpressao(instrucaoRelacional.obterOperandoRetorno());
 
+        // retorno recebe 1 se relação verdadeira, 0 caso contrário
+        imprimir(Assembly.MOV + " " + Assembly.EAX + ", " + esquerdo);
+        imprimir("cmp " + Assembly.EAX + ", " + direito);
+        imprimir(operacao + " " + rotulo1);
+        imprimir(Assembly.MOV + " " + retorno + ", 0");
+        imprimir("jmp " + rotulo2);
+        imprimir(rotulo1 + ":");
+        imprimir(Assembly.MOV + " " + retorno + ", 1");
+        imprimir(rotulo2 + ":");
     }
 
     private void escreverInstrucaoMover(InstrucaoAtribuir instrucaoMover) {
-        // Completar atui.
-        // Usar imprimir para gerar o código Assembly.
-        // USar obterValorExpressao para obter o que dev ser movido
+        String origem = obterValorExpressao(instrucaoMover.obterOrigem());
+        String destino = obterValorExpressao(instrucaoMover.obterDestino());
+
+        imprimir(Assembly.MOV + " " + Assembly.EAX + ", " + origem);
+        imprimir(Assembly.MOV + " " + destino + ", " + Assembly.EAX);
     }
 
     private void escreverInstrucaoSeFalso(InstrucaoSeFalso instrucaoSeFalso) {
-        // Completar atui.
-        // Usar imprimir para gerar o código Assembly.
-        // USar obterValorExpressao para obter o que dev ser movido
+        String expressao = obterValorExpressao(instrucaoSeFalso.obterExpressao());
+        int numeroRotuloDestino = instrucaoSeFalso.obterRotulo().obterNumeroRotulo();
+
+        // se_falso expr ir_para R  ->  salta para R quando expr == 0
+        imprimir("cmp " + expressao + ", 0");
+        imprimir("je r" + numeroRotuloDestino);
     }
 
 }
