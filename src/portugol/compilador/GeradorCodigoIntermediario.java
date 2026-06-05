@@ -20,11 +20,18 @@ import portugol.arvoresintatica.NoExpressao;
 import portugol.arvoresintatica.NoExpressaoAritmetica;
 import portugol.arvoresintatica.NoExpressaoRelacional;
 import portugol.arvoresintatica.NoIdentificador;
+import portugol.arvoresintatica.NoNumeroInteiro;
+import portugol.arvoresintatica.NomeComando;
+import portugol.arvoresintatica.TipoOperacaoAritmetica;
+import portugol.arvoresintatica.TipoRelacao;
 import portugol.intermediario.Instrucao;
 import portugol.intermediario.InstrucaoAritmetica;
+import portugol.intermediario.InstrucaoAtribuir;
 import portugol.intermediario.InstrucaoEscrever;
+import portugol.intermediario.InstrucaoIrPara;
 import portugol.intermediario.InstrucaoLer;
 import portugol.intermediario.InstrucaoRelacional;
+import portugol.intermediario.InstrucaoSeFalso;
 import portugol.intermediario.Rotulo;
 import portugol.lexico.DadosIdentificador;
 
@@ -150,28 +157,76 @@ public class GeradorCodigoIntermediario {
     }
 
     private void traduzirComandoCondicao(NoComandoCondicao comandoCondicao) throws Exception {
-        // Completar aqui.
-        // Usar instrucoes.add() para incluir as instruções.
+        NoExpressao condicao = traduzirExpressaoRelacional(comandoCondicao.obterExpressaoRelacional());
+
+        Rotulo rotuloFimSe = criarRotulo();
+        instrucoes.add(new InstrucaoSeFalso(condicao, rotuloFimSe));
+        traduzirComandos(comandoCondicao.obterBlocoComandos());
+
+        NoComando comandoSenao = comandoCondicao.obterComandoSenao();
+        if (comandoSenao == null) {
+            instrucoes.add(rotuloFimSe);
+        } else {
+            Rotulo rotuloFim = criarRotulo();
+            instrucoes.add(new InstrucaoIrPara(rotuloFim));
+            instrucoes.add(rotuloFimSe);
+            if (comandoSenao.obterNome() == NomeComando.CONDICAO) {
+                traduzirComandoCondicao((NoComandoCondicao) comandoSenao);
+            } else {
+                traduzirComandos((NoBlocoComandos) comandoSenao);
+            }
+            instrucoes.add(rotuloFim);
+        }
     }
 
     private void traduzirComandoEnquantoFaca(NoComandoEnquantoFaca comandoEnquantoFaca) throws Exception {
+        Rotulo rotuloInicio = criarRotulo();
+        instrucoes.add(rotuloInicio);
 
-        // Completar aqui.
-        // Usar instrucoes.add() para incluir as instruções.
+        NoExpressao condicao = traduzirExpressaoRelacional(comandoEnquantoFaca.obterExpressaoRelacional());
 
+        Rotulo rotuloFim = criarRotulo();
+        instrucoes.add(new InstrucaoSeFalso(condicao, rotuloFim));
+        traduzirComandos(comandoEnquantoFaca.obterListaComandos());
+        instrucoes.add(new InstrucaoIrPara(rotuloInicio));
+        instrucoes.add(rotuloFim);
     }
 
     private void traduzirComandoDeAte(NoComandoDeAte comandoDeAte) throws Exception {
+        NoIdentificador contador = comandoDeAte.obterIdentificador();
 
-        // Completar aqui.
-        // Usar instrucoes.add() para incluir as instruções.
+        // contador := limiteInicial
+        instrucoes.add(new InstrucaoAtribuir(comandoDeAte.obterLimiteInicial(), contador));
 
+        Rotulo rotuloInicio = criarRotulo();
+        instrucoes.add(rotuloInicio);
+
+        // temp := contador <= limiteFinal
+        NoIdentificador temp = criarVariavelTemporaria();
+        instrucoes.add(new InstrucaoRelacional(TipoRelacao.MENOR_IGUAL,
+                temp,
+                contador,
+                comandoDeAte.obterLimiteFinal()));
+
+        Rotulo rotuloFim = criarRotulo();
+        instrucoes.add(new InstrucaoSeFalso(temp, rotuloFim));
+        traduzirComandos(comandoDeAte.obterBlocoComandos());
+
+        // contador := contador + 1
+        NoIdentificador tempIncremento = criarVariavelTemporaria();
+        instrucoes.add(new InstrucaoAritmetica(TipoOperacaoAritmetica.ADICAO,
+                tempIncremento,
+                contador,
+                new NoNumeroInteiro(1, 0)));
+        instrucoes.add(new InstrucaoAtribuir(tempIncremento, contador));
+
+        instrucoes.add(new InstrucaoIrPara(rotuloInicio));
+        instrucoes.add(rotuloFim);
     }
 
     private void traduzirComandoAtribuicao(NoComandoAtribuicao comandoAtribuicao) throws Exception {
-        // Completar aqui.
-        // Usar instrucoes.add() para incluir as instruções.
-
+        NoExpressao origem = traduzirExpressao(comandoAtribuicao.obterExpressao());
+        instrucoes.add(new InstrucaoAtribuir(origem, comandoAtribuicao.obterIdentificador()));
     }
 
 }

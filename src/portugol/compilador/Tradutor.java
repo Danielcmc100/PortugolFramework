@@ -33,7 +33,7 @@ public class Tradutor {
 
     public ArrayList<Instrucao> executar(String codigo) throws Exception {
         NoPrograma programa = analisadorSintatico.executar(codigo);
-        // analisadorSemantico.executar(programa.obterListaComandos());
+        analisadorSemantico.executar(programa.obterListaComandos());
         return geradorCodigoIntermediario.executar(programa.obterListaComandos());
     }
 }

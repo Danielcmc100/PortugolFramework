@@ -121,26 +121,43 @@ public class AnalisadorSemantico {
     // Métodos para completar --------------------------------------------------
 
     private void verificarTipoComandoCondicao(NoComandoCondicao comandoCondicao) throws Exception {
-        // Completar arqui.
-        // Usar verificarTipoExpressaoRelacional
-        // Usar verificarTipoComandos
-        // USar verificarTipoComandoCondicao
+        verificarTipoExpressaoRelacional(comandoCondicao.obterExpressaoRelacional());
+        verificarTipoComandos(comandoCondicao.obterBlocoComandos());
+
+        NoComando comandoSenao = comandoCondicao.obterComandoSenao();
+        if (comandoSenao != null) {
+            if (comandoSenao.obterNome() == NomeComando.CONDICAO) {
+                verificarTipoComandoCondicao((NoComandoCondicao) comandoSenao);
+            } else {
+                verificarTipoComandos((NoBlocoComandos) comandoSenao);
+            }
+        }
     }
 
     private void verificarComandoDeAte(NoComandoDeAte comandoDeAte) throws Exception {
-        // Completar aqui
-        // Usar verificarTipoComandos.
-        // Usar tratadorErro.emitirErroLimitesComandoDeAte(comandoDeAte)
-
+        if (comandoDeAte.obterLimiteInicial().obterValor() > comandoDeAte.obterLimiteFinal().obterValor()) {
+            tratadorErro.emitirErroLimitesComandoDeAte(comandoDeAte);
+        }
+        verificarTipoComandos(comandoDeAte.obterBlocoComandos());
     }
 
     private void verificarComandoEnquantoFaca(NoComandoEnquantoFaca comandoEnquantoFaca) throws Exception {
-        // Completar arqui. Usar os métodos que já existem para fazer as verificações.
+        verificarTipoExpressaoRelacional(comandoEnquantoFaca.obterExpressaoRelacional());
+        verificarTipoComandos(comandoEnquantoFaca.obterListaComandos());
     }
 
     private void verificarComandoAtribuicao(NoComandoAtribuicao comandoAtribuicao) throws Exception {
-        // Completar aqui.
-        // Usar tratadorErro.emitirErroSemanticoTipoValorEsperado
+        TipoValor tipoVariavel = comandoAtribuicao.obterIdentificador().obterTipoValorExpressao();
+        TipoValor tipoExpressao = obterTipoExpressao(comandoAtribuicao.obterExpressao());
+
+        // Permite widening INTEIRO -> REAL; demais divergências de tipo são erro.
+        boolean wideningNumerico = (tipoVariavel == TipoValor.REAL && tipoExpressao == TipoValor.INTEIRO);
+
+        if (tipoVariavel != tipoExpressao && !wideningNumerico) {
+            tratadorErro.emitirErroSemanticoTipoValorEsperado(tipoVariavel,
+                    tipoExpressao,
+                    comandoAtribuicao.obterNumeroLinha());
+        }
     }
 
 }
